@@ -1,0 +1,26 @@
+---
+title: 本地端口映射
+date: 2022-03-16T00:00:00.000Z
+lastmod: 2022-03-16T00:00:00.000Z
+tags: ['工程相关']
+draft: false
+summary: '端口映射 80 -> 8000# /etc/pf.conf# 文件修改scrub-anchor "com.apple/*"nat-anchor "com.apple/*"rdr-ancho...'
+layout: PostSimple
+---
+
+```shell
+端口映射 80 -> 8000
+# /etc/pf.conf
+# 文件修改
+
+scrub-anchor "com.apple/*"
+nat-anchor "com.apple/*"
+rdr-anchor "com.apple/*"
+rdr on lo0 inet proto tcp from any to 127.0.0.1 port 80 -> 127.0.0.1 port 8000
+dummynet-anchor "com.apple/*"
+anchor "com.apple/*"
+load anchor "com.apple" from "/etc/pf.anchors/com.apple"
+
+# 然后还要执行
+sudo pfctl -ef /etc/pf.conf
+```

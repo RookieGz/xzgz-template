@@ -1,0 +1,99 @@
+---
+title: React中的useEffects的原理和调用时机是什么
+date: 2024-10-01T00:00:00.000Z
+lastmod: 2024-10-01T00:00:00.000Z
+tags: ['React']
+draft: false
+summary: 'useEffect 是 React 中一个关键的 Hook，它让我们能够在函数组件中处理副作用（side effects），比如数据获取、DOM 操作、订阅事件等。为了理解它的工作原理，需要从 React 的更新机制、Hook 本身的特性以及副作用管理的方式入手。'
+layout: PostSimple
+---
+
+useEffect 是 React 中一个关键的 Hook，它让我们能够在函数组件中处理副作用（side effects），比如数据获取、DOM 操作、订阅事件等。为了理解它的工作原理，需要从 React 的更新机制、Hook 本身的特性以及副作用管理的方式入手。
+
+# useEffect 的工作原理
+
+1. 初始化与渲染阶段
+当组件第一次渲染时，React 会执行函数组件的所有逻辑，包括 useEffect。useEffect 中的副作用函数会在组件“完成渲染”后执行，而不是在渲染的过程中执行。这与类组件中的 componentDidMount 和 componentDidUpdate 有点类似，但不是同步执行的，而是异步的。
+2. 依赖监听机制
+每个 useEffect 可以有一个依赖数组（dependency array）。React 在每次渲染时都会检查依赖项数组中的值（如果有）。如果数组中的任意值发生了变化，React 会重新执行该 useEffect 的副作用函数。
+
+```jsx
+useEffect(() => {
+  // 副作用代码
+}, [dependency1, dependency2]);
+```
+
+这种依赖检查机制是 React 管理副作用的核心部分。它确保了只有在指定的依赖项发生变化时，副作用代码才会重新执行，从而避免不必要的重新计算。
+
+3. 清理函数
+在执行副作用函数之前，React 会先执行上一次渲染中的清理函数（如果存在），清理函数的主要目的是释放之前渲染周期中创建的资源（例如事件监听器、计时器、订阅等），防止内存泄漏。
+
+```js
+useEffect(() => {
+  const id = setInterval(() => {
+    console.log('Tick');
+  }, 1000);
+
+  return () => {
+    clearInterval(id); // 清理副作用
+  };
+}, []);
+```
+
+React 在每次重新执行副作用函数之前，都会执行清理函数，确保副作用的执行是“干净的”，不会出现不一致的状态。
+
+4. 首次渲染与后续更新
+useEffect 在组件首次渲染（即 DOM 渲染完成）后执行，此时可以安全地访问 DOM、发起网络请求等。对于后续的更新，React 会根据依赖项的变化决定是否重新执行 useEffect。
+例如，如果 useEffect 没有依赖项数组，那么它会在每次渲染后都执行：
+
+```js
+useEffect(() => {
+  // 这个副作用会在每次渲染后执行
+});
+```
+如果依赖项数组为空，则 useEffect 只会在组件首次渲染时执行一次：
+```js
+useEffect(() => {
+  // 这个副作用只会在组件挂载时执行一次
+}, []);
+```
+
+useEffect 执行顺序
+
+1.	首次渲染： React 渲染组件，渲染完成后，执行所有 useEffect。
+2.	后续更新：
+- 渲染组件。
+- 对比依赖项，决定哪些 useEffect 需要重新执行。
+- 执行每个副作用前的清理函数（如果定义了）。
+- 执行副作用函数。
+
+# 为什么 useEffect 是异步的？
+
+React 的渲染过程希望尽可能是同步和快速的，因此不希望在渲染过程中执行耗时的副作用操作。useEffect 是异步的，这意味着它会在 DOM 更新完成后再执行，从而保证用户能尽快看到渲染结果，同时也避免在渲染期间做一些不相关的副作用处理。
+
+useEffect 和类组件的 `componentDidMount`、`componentDidUpdate`、`componentWillUnmount`
+
+useEffect 结合了类组件中的这三个生命周期方法的功能：
+
+- componentDidMount：可以通过依赖项数组 [] 模拟。
+- componentDidUpdate：可以通过依赖项数组 [dependency] 模拟。
+- componentWillUnmount：通过 useEffect 返回的清理函数模拟。
+
+```js
+useEffect(() => {
+  // componentDidMount 或 componentDidUpdate
+  return () => {
+    // componentWillUnmount
+  };
+}, [dependency]); // componentDidUpdate
+```
+
+**总结**
+
+useEffect 是一个灵活强大的 Hook，用于处理副作用。其背后的原理包括：
+
+-	依赖于 React 的虚拟 DOM 渲染机制，确保副作用是在 DOM 更新后安全地执行。
+-	通过依赖数组控制何时执行副作用，从而避免不必要的性能消耗。
+-	提供了清理函数机制，帮助开发者管理资源释放，防止内存泄漏。
+
+因此，useEffect 本质上是一个用于副作用管理的工具，通过依赖项变化来触发重新执行，并通过清理函数保证状态的同步性和资源的有效管理。
